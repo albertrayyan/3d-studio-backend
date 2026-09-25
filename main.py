@@ -1,11 +1,14 @@
 import uuid
 import os
-from typing import List, Optional, Annotated
+from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import modal
 
-app = FastAPI(title="3D Product Generator API")
+app = FastAPI(
+    title="3D Product Generator API",
+    swagger_ui_parameters={"defaultModelsExpandDepth": -1}
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,7 +24,7 @@ def read_root():
 
 @app.post("/generate-3d")
 async def generate_3d(
-    files: Annotated[List[UploadFile], File(description="Upload product photos")],
+    files: list[UploadFile] = File(..., description="Select multiple product images"),
     length_cm: Optional[float] = Form(None),
     width_cm: Optional[float] = Form(None),
     height_cm: Optional[float] = Form(None)
@@ -29,7 +32,7 @@ async def generate_3d(
     if not files:
         raise HTTPException(status_code=400, detail="At least one image file is required.")
 
-    # Read uploaded photo bytes from all selected files
+    # Read uploaded photo bytes for all uploaded files
     image_bytes_list = []
     for file in files:
         content = await file.read()
@@ -43,7 +46,10 @@ async def generate_3d(
     }
 
     try:
+        # Lookup deployed Modal worker
         gpu_func = modal.Function.lookup("3d-product-pipeline", "process_product_photos")
+        
+        # Trigger GPU processing remotely with the full list of photos
         result = gpu_func.remote(image_bytes_list, job_id, dimensions)
         
         return {
