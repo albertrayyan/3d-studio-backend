@@ -1,6 +1,6 @@
 import uuid
 import os
-from typing import List, Optional
+from typing import List, Optional, Annotated
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import modal
@@ -21,7 +21,7 @@ def read_root():
 
 @app.post("/generate-3d")
 async def generate_3d(
-    files: UploadFile = File(..., description="Upload product photo"),
+    files: Annotated[List[UploadFile], File(description="Upload product photos")] = ...,
     length_cm: Optional[float] = Form(None),
     width_cm: Optional[float] = Form(None),
     height_cm: Optional[float] = Form(None)
@@ -29,9 +29,11 @@ async def generate_3d(
     if not files:
         raise HTTPException(status_code=400, detail="At least one image file is required.")
 
-    # Read uploaded file bytes
-    content = await files.read()
-    image_bytes_list = [content]
+    # Read uploaded photo bytes from all selected files
+    image_bytes_list = []
+    for file in files:
+        content = await file.read()
+        image_bytes_list.append(content)
 
     job_id = str(uuid.uuid4())
     dimensions = {
@@ -41,6 +43,7 @@ async def generate_3d(
     }
 
     try:
+        # Send array of photo bytes to Modal
         gpu_func = modal.Function.lookup("3d-product-pipeline", "process_product_photos")
         result = gpu_func.remote(image_bytes_list, job_id, dimensions)
         
