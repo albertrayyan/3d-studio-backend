@@ -25,12 +25,19 @@ async def generate_3d(
     file2: Optional[UploadFile] = File(None, description="Angle photo 2 (Optional)"),
     file3: Optional[UploadFile] = File(None, description="Angle photo 3 (Optional)"),
     file4: Optional[UploadFile] = File(None, description="Angle photo 4 (Optional)"),
+    file5: Optional[UploadFile] = File(None, description="Angle photo 5 (Optional)"),
+    file6: Optional[UploadFile] = File(None, description="Angle photo 6 (Optional)"),
+    file7: Optional[UploadFile] = File(None, description="Angle photo 7 (Optional)"),
+    file8: Optional[UploadFile] = File(None, description="Angle photo 8 (Optional)"),
+    file9: Optional[UploadFile] = File(None, description="Angle photo 9 (Optional)"),
+    file10: Optional[UploadFile] = File(None, description="Angle photo 10 (Optional)"),
     length_cm: Optional[float] = Form(None),
     width_cm: Optional[float] = Form(None),
     height_cm: Optional[float] = Form(None)
 ):
     # Collect all provided files into a single list
-    uploaded_files = [f for f in [file1, file2, file3, file4] if f is not None]
+    all_inputs = [file1, file2, file3, file4, file5, file6, file7, file8, file9, file10]
+    uploaded_files = [f for f in all_inputs if f is not None]
 
     if not uploaded_files:
         raise HTTPException(status_code=400, detail="At least one image file is required.")
@@ -49,10 +56,7 @@ async def generate_3d(
     }
 
     try:
-        # Lookup deployed Modal worker
         gpu_func = modal.Function.lookup("3d-product-pipeline", "process_product_photos")
-        
-        # Pass all image byte blobs to Modal worker
         result = gpu_func.remote(image_bytes_list, job_id, dimensions)
         
         return {
