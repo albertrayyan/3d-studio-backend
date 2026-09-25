@@ -35,12 +35,13 @@ async def generate_3d(
     width_cm: Optional[float] = Form(None),
     height_cm: Optional[float] = Form(None)
 ):
-    # Collect all provided files into a single list
     all_inputs = [file1, file2, file3, file4, file5, file6, file7, file8, file9, file10]
-    uploaded_files = [f for f in all_inputs if f is not None]
+    
+    # Filter out unselected / empty file slots sent by Swagger UI
+    uploaded_files = [f for f in all_inputs if f is not None and f.filename != ""]
 
     if not uploaded_files:
-        raise HTTPException(status_code=400, detail="At least one image file is required.")
+        raise HTTPException(status_code=400, detail="At least one valid image file is required.")
 
     # Read uploaded photo bytes
     image_bytes_list = []
