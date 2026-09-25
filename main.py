@@ -21,7 +21,7 @@ def read_root():
 
 @app.post("/generate-3d")
 async def generate_3d(
-    files: Annotated[List[UploadFile], File(description="Upload product photos")] = ...,
+    files: Annotated[List[UploadFile], File(description="Upload product photos")],
     length_cm: Optional[float] = Form(None),
     width_cm: Optional[float] = Form(None),
     height_cm: Optional[float] = Form(None)
@@ -43,7 +43,6 @@ async def generate_3d(
     }
 
     try:
-        # Send array of photo bytes to Modal
         gpu_func = modal.Function.lookup("3d-product-pipeline", "process_product_photos")
         result = gpu_func.remote(image_bytes_list, job_id, dimensions)
         
