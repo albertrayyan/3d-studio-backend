@@ -1,10 +1,15 @@
 import uuid
 import os
+from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import modal
 
-app = FastAPI(title="3D Product Generator API")
+# Explicitly setting OpenAPI 3.0.2 ensures Swagger UI renders standard file pickers
+app = FastAPI(
+    title="3D Product Generator API",
+    openapi_version="3.0.2"
+)
 
 # Allow CORS requests from frontend clients
 app.add_middleware(
@@ -21,10 +26,10 @@ def read_root():
 
 @app.post("/generate-3d")
 async def generate_3d(
-    files: list[UploadFile] = File(...),
-    length_cm: float = Form(None),
-    width_cm: float = Form(None),
-    height_cm: float = Form(None)
+    files: List[UploadFile] = File(..., description="Upload product photos"),
+    length_cm: Optional[float] = Form(None),
+    width_cm: Optional[float] = Form(None),
+    height_cm: Optional[float] = Form(None)
 ):
     if not files:
         raise HTTPException(status_code=400, detail="At least one image file is required.")
