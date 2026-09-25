@@ -56,8 +56,8 @@ async def generate_3d(
             "height_cm": height_cm
         }
 
-        # Connect to Modal worker
-        gpu_func = modal.Function.lookup("3d-product-pipeline", "process_product_photos")
+        # Updated line for Modal lookup syntax:
+        gpu_func = modal.Function.from_name("3d-product-pipeline", "process_product_photos")
         result = gpu_func.remote(image_bytes_list, job_id, dimensions)
         
         return {
