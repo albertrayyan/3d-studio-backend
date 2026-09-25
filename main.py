@@ -3,13 +3,10 @@ import os
 from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 import modal
 
-# Explicitly setting OpenAPI 3.0.2 ensures Swagger UI renders standard file pickers
-app = FastAPI(
-    title="3D Product Generator API",
-    openapi_version="3.0.2"
-)
+app = FastAPI(title="3D Product Generator API")
 
 # Allow CORS requests from frontend clients
 app.add_middleware(
@@ -20,13 +17,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Custom OpenAPI schema fix for Swagger multi-file picker bug
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="3D Product Generator API",
+        version="1.0.0",
+        routes=app.routes,
+    )
+    # Force 'files' field to render as binary file picker in Swagger UI
+    try:
+        schema = openapi_schema["paths"]["/generate-3d"]["post"]["requestBody"]["content"]["multipart/form-data"]["schema"]
+        schema["properties"]["files"] = {
+            "type": "array",
+            "items": {"type": "string", "format": "binary"},
+            "description": "Upload product photos"
+        }
+    except KeyError:
+        pass
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
+
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "3D Generator API is active"}
 
 @app.post("/generate-3d")
 async def generate_3d(
-    files: List[UploadFile] = File(..., description="Upload product photos"),
+    files: List[UploadFile] = File(...),
     length_cm: Optional[float] = Form(None),
     width_cm: Optional[float] = Form(None),
     height_cm: Optional[float] = Form(None)
