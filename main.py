@@ -1,5 +1,6 @@
 import uuid
 import os
+import traceback
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,37 +36,43 @@ async def generate_3d(
     width_cm: Optional[float] = Form(None),
     height_cm: Optional[float] = Form(None)
 ):
-    all_inputs = [file1, file2, file3, file4, file5, file6, file7, file8, file9, file10]
-    
-    # Filter out unselected / empty file slots sent by Swagger UI
-    uploaded_files = [f for f in all_inputs if f is not None and f.filename != ""]
-
-    if not uploaded_files:
-        raise HTTPException(status_code=400, detail="At least one valid image file is required.")
-
-    # Read uploaded photo bytes
-    image_bytes_list = []
-    for file in uploaded_files:
-        content = await file.read()
-        image_bytes_list.append(content)
-
-    job_id = str(uuid.uuid4())
-    dimensions = {
-        "length_cm": length_cm,
-        "width_cm": width_cm,
-        "height_cm": height_cm
-    }
-
     try:
+        all_inputs = [file1, file2, file3, file4, file5, file6, file7, file8, file9, file10]
+        uploaded_files = [f for f in all_inputs if f is not None and getattr(f, "filename", "")]
+
+        if not uploaded_files:
+            raise HTTPException(status_code=400, detail="At least one valid image file is required.")
+
+        # Read uploaded photo bytes
+        image_bytes_list = []
+        for file in uploaded_files:
+            content = await file.read()
+            image_bytes_list.append(content)
+
+        job_id = str(uuid.uuid4())
+        dimensions = {
+            "length_cm": length_cm,
+            "width_cm": width_cm,
+            "height_cm": height_cm
+        }
+
+        # Connect to Modal worker
         gpu_func = modal.Function.lookup("3d-product-pipeline", "process_product_photos")
         result = gpu_func.remote(image_bytes_list, job_id, dimensions)
         
         return {
             "job_id": job_id,
             "status": "completed",
-            "model_a_url": result["model_a_url"],
-            "model_b_url": result["model_b_url"],
-            "dimensions_cm": result["scaled_extents_cm"]
+            "model_a_url": result.get("model_a_url"),
+            "model_b_url": result.get("model_b_url"),
+            "dimensions_cm": result.get("scaled_extents_cm")
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+        error_details = traceback.format_exc()
+        print(f"Error processing 3D generation: {error_details}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"GPU Processing failed: {str(e)}"
+        )
